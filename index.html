@@ -35,13 +35,14 @@
 
   <div class="main" id="main">
     <header class="topbar">
-      <button class="hamburger" onclick="toggleSidebar()">☰</button>
-      <div class="topbar-info">
-        <h1 id="topTitle">Selecione uma planilha</h1>
-        <span id="topSub" class="muted"></span>
-      </div>
-      <span id="apiStatus" class="badge badge-muted">Verificando...</span>
-    </header>
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+  <div class="topbar-info">
+    <h1 id="topTitle">Selecione uma planilha</h1>
+    <span id="topSub" class="muted"></span>
+  </div>
+  <span id="apiStatus" class="badge badge-muted">Verificando...</span>
+  <button class="btn-icon" onclick="openSettings()" title="Configurações">⚙</button>
+</header>
 
     <div class="tabs-bar" id="tabsBar" style="display:none">
       <div id="tabsList" class="tabs-list"></div>
