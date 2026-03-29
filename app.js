@@ -28,11 +28,30 @@ function buildUrl(action, params = {}) {
   return u.toString();
 }
 async function api(action, params = {}) {
-  if (!S.apiUrl || !S.token) throw new Error('Configure a URL e o token primeiro.');
-  const res = await fetch(buildUrl(action, params));
-  const json = await res.json();
-  if (json.error) throw new Error(json.error);
-  return json;
+  const u = new URL(GAS_URL);
+  u.searchParams.set('token',  TOKEN);
+  u.searchParams.set('action', action);
+  for (const [k, v] of Object.entries(params)) {
+    u.searchParams.set(k, v == null ? '' : String(v));
+  }
+
+  // Apps Script exige GET sem preflight — usa text/plain p/ evitar CORS preflight
+  const res = await fetch(u.toString(), {
+    method:   'GET',
+    redirect: 'follow',
+    // NÃO adicione headers customizados — dispara preflight e quebra o CORS
+  });
+
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  const text = await res.text();
+  try {
+    const data = JSON.parse(text);
+    if (data && data.error) throw new Error(data.error);
+    return data;
+  } catch(e) {
+    throw new Error('Resposta inválida: ' + text.substring(0, 100));
+  }
 }
 async function apiPost(body) {
   if (!S.apiUrl || !S.token) throw new Error('Configure a URL e o token primeiro.');
