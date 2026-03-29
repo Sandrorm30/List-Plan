@@ -155,13 +155,21 @@ function selectTab(indexOrName) {
 
 async function loadTable() {
   try {
-    const data = await api('data', { id: S.current.id, tab: S.tab, page: S.page, search: S.search });
+    // S.tab DEVE ser string — garante aqui também
+    const tabStr = String(S.tab || '');
+    const data = await api('data', {
+      id:     S.current.id,
+      tab:    tabStr,
+      page:   S.page,
+      search: S.search
+    });
     renderTable(data);
     renderPagination(data);
     const rc = document.getElementById('rowCount');
     if (rc) rc.textContent = `${data.total} linha(s)`;
   } catch(err) {
-    document.getElementById('content').innerHTML = `<div class="welcome"><p class="muted">Erro: ${esc(err.message)}</p></div>`;
+    document.getElementById('content').innerHTML =
+      `<div class="welcome"><p class="muted">Erro: ${esc(err.message)}</p></div>`;
   }
 }
 
