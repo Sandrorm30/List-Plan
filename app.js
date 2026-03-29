@@ -2,7 +2,11 @@
 // app.js — Sheets Viewer (sem localStorage, 100% em memória)
 // ═══════════════════════════════════════════════════════════════
 
-const S = { apiUrl: '', token: '', sheets: [], current: null, tab: null, page: 1, search: '' };
+const S = {
+  apiUrl: 'https://script.google.com/macros/s/AKfycbzpoiPBjVb84MPsvaTtmhCQmu7ckRig7...', // sua URL completa
+  token:  'ppdarbo',
+  sheets: [], current: null, tab: null, page: 1, search: ''
+};
 let editMode = false;
 window._lastTableData = null;
 
@@ -301,7 +305,11 @@ function exportPDF() {
 // ── Init
 document.addEventListener('DOMContentLoaded', () => {
   closeSidebar();
-  setApiStatus('error');
-  // Abre automaticamente o modal de configurações
-  openSettings();
+  setFieldVal('cfgUrl',   S.apiUrl);
+  setFieldVal('cfgToken', S.token);
+  if (S.apiUrl && S.token) {
+    loadList();
+  } else {
+    openSettings();
+  }
 });
