@@ -104,32 +104,53 @@ async function selectSheet(id, name) {
 
 function renderTabs(tabs) {
   const wrap = document.getElementById('tabsList');
-  const bar = document.getElementById('tabsBar');
-  if (!tabs.length) {
+  const bar  = document.getElementById('tabsBar');
+  if (!tabs || !tabs.length) {
     if (wrap) wrap.innerHTML = '';
-    if (bar) bar.style.display = 'none';
-    document.getElementById('content').innerHTML = '<div class="welcome"><p class="muted">Nenhuma aba encontrada.</p></div>';
+    if (bar)  bar.style.display = 'none';
+    document.getElementById('content').innerHTML =
+      '<div class="welcome"><p class="muted">Nenhuma aba encontrada.</p></div>';
     return;
   }
   if (bar) bar.style.display = 'block';
-  if (wrap) wrap.innerHTML = tabs.map(t =>
-    `<button class="tab-btn ${S.tab === t ? 'active' : ''}" onclick="selectTab('${esc(t)}')">${esc(t)}</button>`
+  // Garante que cada tab é string
+  const tabNames = tabs.map(t => String(t));
+  if (wrap) wrap.innerHTML = tabNames.map((t, i) =>
+    `<button class="tab-btn" data-tab-index="${i}" onclick="selectTab(this.dataset.tabIndex)">${esc(t)}</button>`
   ).join('');
-  if (!S.tab) selectTab(tabs[0]);
+  // Guarda os nomes para recuperar por índice
+  window._tabNames = tabNames;
+  if (!S.tab) selectTab('0');
 }
 
-async function selectTab(tab) {
+function selectTab(indexOrName) {
+  // Aceita índice numérico ou nome direto
+  let tab;
+  if (window._tabNames && !isNaN(indexOrName)) {
+    tab = window._tabNames[parseInt(indexOrName)];
+  } else {
+    tab = String(indexOrName);
+  }
+  if (!tab) return;
+
   S.tab = tab; S.page = 1; S.search = '';
   editMode = false;
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.textContent === tab));
+
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    const idx = parseInt(b.dataset.tabIndex);
+    b.classList.toggle('active', window._tabNames?.[idx] === tab);
+  });
+
   const searchEl = document.getElementById('tableSearch');
   if (searchEl) searchEl.value = '';
   const editBtn = document.getElementById('editModeBtn');
   if (editBtn) { editBtn.textContent = '✏ Edição: OFF'; editBtn.style.background = ''; editBtn.style.color = ''; }
-  document.getElementById('topSub').textContent = tab;
+
+  document.getElementById('topSub').textContent    = tab;
   document.getElementById('toolbar').style.display = 'flex';
-  document.getElementById('content').innerHTML = '<div class="welcome"><p class="muted">Carregando dados...</p></div>';
-  await loadTable();
+  document.getElementById('content').innerHTML     =
+    '<div class="welcome"><p class="muted">Carregando dados...</p></div>';
+  loadTable();
 }
 
 async function loadTable() {
