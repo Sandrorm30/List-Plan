@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 const S = {
-  apiUrl: 'https://script.google.com/macros/s/AKfycbzpoiPBjVb84MPsvaTtmhCQmu7ckRig7...', // sua URL completa
+  apiUrl: 'https://script.google.com/macros/s/AKfycbzpoiPBjVb84MPsvaTtmhCQmu7ckRig7S3EvW9gNqRwgoKi9HdLZWvLxjxz_n1xVt5Erg/exec',
   token:  'ppdarbo',
   sheets: [], current: null, tab: null, page: 1, search: ''
 };
@@ -73,10 +73,13 @@ function renderNav() {
     return;
   }
   nav.innerHTML = items.map(s => `
-    <button class="sheet-item ${S.current?.id === s.id ? 'active' : ''}"
-            onclick="selectSheet('${esc(s.id)}','${esc(s.name)}')">
-      📊 ${esc(s.name)}
-    </button>`).join('');
+    <div class="sheet-item-wrap">
+      <button class="sheet-item ${S.current?.id === s.id ? 'active' : ''}"
+              onclick="selectSheet('${esc(s.id)}','${esc(s.name)}')">
+        📊 ${esc(s.name)}
+      </button>
+      <button class="btn-remove" onclick="removeSheet('${esc(s.id)}')" title="Remover">✕</button>
+    </div>`).join('');
 }
 
 function filterSidebar() { renderNav(); }
@@ -89,6 +92,7 @@ async function selectSheet(id, name) {
   document.getElementById('topTitle').textContent = name;
   document.getElementById('topSub').textContent   = '';
   document.getElementById('toolbar').style.display = 'none';
+  document.getElementById('tabsBar').style.display = 'none';
   document.getElementById('content').innerHTML =
     '<div class="welcome"><p class="muted">Carregando abas...</p></div>';
   if (window.innerWidth <= 700) closeSidebar();
@@ -112,7 +116,7 @@ function renderTabs(tabs) {
     return;
   }
   if (bar) bar.style.display = 'block';
-  // Extrai o nome: se o item for objeto {name, rows, cols}, pega .name; senão converte para string
+  // Extrai nome: se for objeto {name,...} pega .name; senão converte para string
   const tabNames = tabs.map(t => (t && typeof t === 'object' && t.name) ? String(t.name) : String(t));
   window._tabNames = tabNames;
   if (wrap) wrap.innerHTML = tabNames.map((t, i) =>
@@ -143,9 +147,9 @@ function selectTab(indexOrName) {
   const editBtn = document.getElementById('editModeBtn');
   if (editBtn) { editBtn.textContent = '✏ Edição: OFF'; editBtn.style.background = ''; editBtn.style.color = ''; }
 
-  document.getElementById('topSub').textContent     = tab;
-  document.getElementById('toolbar').style.display  = 'flex';
-  document.getElementById('content').innerHTML      =
+  document.getElementById('topSub').textContent    = tab;
+  document.getElementById('toolbar').style.display = 'flex';
+  document.getElementById('content').innerHTML     =
     '<div class="welcome"><p class="muted">Carregando dados...</p></div>';
   loadTable();
 }
@@ -209,7 +213,10 @@ async function loadList() {
     S.sheets = data.spreadsheets || [];
     renderNav();
     setApiStatus('ok');
-  } catch(err) { setApiStatus('error'); }
+  } catch(err) {
+    setApiStatus('error');
+    console.error('loadList error:', err.message);
+  }
 }
 
 // ── Modais
@@ -217,9 +224,12 @@ function openModal(id)  { const m = document.getElementById(id); if (m) m.style.
 function closeModal(id) { const m = document.getElementById(id); if (m) m.style.display = 'none'; }
 
 function openAddModal() {
+  const errEl = document.getElementById('addError');
+  if (errEl) errEl.style.display = 'none';
   openModal('addModal');
   setTimeout(() => document.getElementById('addId')?.focus(), 50);
 }
+
 function openSettings() {
   setFieldVal('cfgUrl',   S.apiUrl);
   setFieldVal('cfgToken', S.token);
@@ -229,7 +239,7 @@ function openSettings() {
 function saveSettings() {
   const urlEl   = document.getElementById('cfgUrl');
   const tokenEl = document.getElementById('cfgToken');
-  if (!urlEl || !tokenEl) { alert('Campos não encontrados no HTML.'); return; }
+  if (!urlEl || !tokenEl) { alert('Campos não encontrados.'); return; }
   const url   = urlEl.value.trim();
   const token = tokenEl.value.trim();
   if (!url || !token) { alert('Preencha a URL e o token.'); return; }
@@ -239,26 +249,26 @@ function saveSettings() {
   loadList();
 }
 
-// ── Adicionar planilha — via GET (sem CORS preflight)
+// ── Adicionar planilha — via GET
 async function confirmAdd() {
   const id   = document.getElementById('addId')?.value.trim();
   const name = document.getElementById('addName')?.value.trim() || '';
-  const err  = document.getElementById('addError');
+  const errEl = document.getElementById('addError');
   if (!id) {
-    if (err) { err.textContent = 'Informe o ID da planilha.'; err.style.display = 'block'; }
+    if (errEl) { errEl.textContent = 'Informe o ID da planilha.'; errEl.style.display = 'block'; }
     return;
   }
-  if (err) err.style.display = 'none';
+  if (errEl) errEl.style.display = 'none';
   const btn = document.getElementById('addConfirmBtn');
   if (btn) btn.disabled = true;
   try {
     await api('addSheet', { id, name });
     closeModal('addModal');
-    if (document.getElementById('addId'))   document.getElementById('addId').value   = '';
-    if (document.getElementById('addName')) document.getElementById('addName').value = '';
+    document.getElementById('addId').value   = '';
+    document.getElementById('addName').value = '';
     await loadList();
   } catch(e) {
-    if (err) { err.textContent = 'Erro: ' + e.message; err.style.display = 'block'; }
+    if (errEl) { errEl.textContent = 'Erro: ' + e.message; errEl.style.display = 'block'; }
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -271,12 +281,12 @@ async function removeSheet(id) {
     await api('removeSheet', { id });
     if (S.current?.id === id) {
       S.current = null; S.tab = null;
-      document.getElementById('topTitle').textContent = '';
+      document.getElementById('topTitle').textContent = 'Selecione uma planilha';
       document.getElementById('topSub').textContent   = '';
-      document.getElementById('toolbar').style.display = 'none';
-      document.getElementById('tabsBar').style.display = 'none';
+      document.getElementById('toolbar').style.display  = 'none';
+      document.getElementById('tabsBar').style.display  = 'none';
       document.getElementById('content').innerHTML =
-        '<div class="welcome"><p class="muted">Selecione uma planilha.</p></div>';
+        '<div class="welcome"><p class="muted">Planilha removida. Selecione outra no menu.</p></div>';
     }
     await loadList();
   } catch(e) { alert('Erro ao remover: ' + e.message); }
@@ -370,9 +380,5 @@ document.addEventListener('DOMContentLoaded', () => {
   closeSidebar();
   setFieldVal('cfgUrl',   S.apiUrl);
   setFieldVal('cfgToken', S.token);
-  if (S.apiUrl && S.apiUrl.includes('script.google.com') && S.token) {
-    loadList();
-  } else {
-    openSettings();
-  }
+  loadList();
 });
